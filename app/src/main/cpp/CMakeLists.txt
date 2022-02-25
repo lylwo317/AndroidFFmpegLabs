@@ -10,6 +10,13 @@ cmake_minimum_required(VERSION 3.18.1)
 
 project("kxffmpeg")
 
+set(SWIG_I_FILE "swig/h264player.i")
+
+set(JAVA_GEN_PACKAGE "com.kevin.androidffmpegplayer")
+string(REPLACE "." "/" JAVA_GEN_SUBDIR ${JAVA_GEN_PACKAGE})
+
+set(JAVA_GEN_DIR ${PROJECT_SOURCE_DIR}/wrapper/${JAVA_GEN_SUBDIR})
+
 set(ffmpeg_lib_dir ${CMAKE_SOURCE_DIR}/../libs/${ANDROID_ABI})
 set(ffmpeg_head_dir ${CMAKE_SOURCE_DIR}/include)
 include_directories(${ffmpeg_head_dir})
@@ -82,6 +89,7 @@ add_library( # Sets the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
+        wrapper/com/kevin/androidffmpegplayer/h264playerJAVA_wrap.cxx
         h264player.cpp
         kxffmpeg.cpp)
 
@@ -97,6 +105,30 @@ find_library( # Sets the name of the path variable.
               # Specifies the name of the NDK library that
               # you want CMake to locate.
               log )
+
+find_package(SWIG REQUIRED)
+include(${SWIG_USE_FILE})
+#
+#file(REMOVE_RECURSE ${JAVA_GEN_DIR})
+# Ensure file recognized as C++ (otherwise, exported as C file)
+set_property(SOURCE ${SWIG_I_FILE} PROPERTY CPLUSPLUS ON)
+# Setup SWIG flags and locations
+set(CMAKE_SWIG_FLAGS -c++ -package ${JAVA_GEN_PACKAGE})
+set(CMAKE_SWIG_OUTDIR ${JAVA_GEN_DIR})
+
+# Export a wrapper file to Java, and link with the created C++ library
+SWIG_ADD_LIBRARY(CPP_Wrapper TYPE MODULE LANGUAGE java SOURCES ${SWIG_I_FILE})
+swig_link_libraries(CPP_Wrapper kxffmpeg)
+
+file(GLOB JAVA_FILES ${JAVA_GEN_DIR}/*.java)
+MESSAGE(STATUS "JAVA_FILES = " ${JAVA_FILES})
+IF(JAVA_FILES)
+    file(COPY ${JAVA_FILES} DESTINATION ${PROJECT_SOURCE_DIR}/../java/${JAVA_GEN_SUBDIR})
+#    file(remove JAVA_FILES)
+ENDIF()
+#add_custom_command(TARGET kxffmpeg POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E file(GLOB JAVA_FILES ${JAVA_GEN_DIR}/*.java)
+#        COMMAND ${CMAKE_COMMAND} -E COPY copy_directory DESTINATION ${PROJECT_SOURCE_DIR}/../java/${JAVA_GEN_SUBDIR})
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this

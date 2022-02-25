@@ -18,7 +18,8 @@ class MainActivity : AppCompatActivity() {
         val file = File("/mnt/sdcard/test.264")
         if (file.exists()) {
             val h264Player = H264Player()
-            h264Player.setSource(file.absolutePath)
+            h264Player.start()
+//            h264Player.setANativeWindow(10L);
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
             Toast.makeText(this, "已获得访问所有文件的权限", Toast.LENGTH_SHORT).show()
