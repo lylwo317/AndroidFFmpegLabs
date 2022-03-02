@@ -2,6 +2,11 @@
 #define H264_PLAYER
 
 #include <android/native_window.h>
+#include <vector>
+#include <queue>
+#include <deque>
+#include "stream_data.h"
+#include "block_queue.h"
 
 
 extern "C"{
@@ -34,17 +39,26 @@ private:
 
     AVCodecID _avCodecID = AV_CODEC_ID_NONE;
 
+    //等待dequeue，然后写入数据
+    std::shared_ptr<BufferData<std::vector<char>>> _availableInputBufferQueue[2] = {};
+    //等待解码器解码
+    std::deque<std::shared_ptr<BufferData<std::vector<char>>>> _queueInputBufferQueue;
+
+    //等待解码器解码填充已经解码好的数据
+    std::queue<std::shared_ptr<BufferData<AVFrame>>> _availableOutputBufferQueue;
+    //等待渲染
+    std::queue<std::shared_ptr<BufferData<AVFrame>>> _waitForRenderOutputBufferQueue;
+
     const char * get_h264_nalu(const char* data, int len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync);
     int decode(AVCodecContext *ctx, AVPacket *pkt, AVFrame *frame);
 public:
-    //设置需要渲染到的窗口
+    //Surface, FORMAT
+    void configure(ANativeWindow *ptr, AVCodecID avCodecId);
+
     /**
      * 开启解码器
      */
-    void startDecoder();
-
-    //Surface, FORMAT
-    void configure(ANativeWindow *ptr, AVCodecID avCodecId);
+    void start();
 
     /**
      * 检测解码器状态
@@ -68,7 +82,17 @@ public:
     /**
      * 停止解码器
      */
-    void stopDecoder();
+    void stop();
+
+    void reset();
+
+    int dequeueInputBuffer();
+
+    void queueInputBuffer(int index, char* data, int data_len);
+
+    int dequeueOutputBuffer(BufferInfo bufferInfo);
+
+    void releaseOutputBuffer(int index);
 };
 
 #endif

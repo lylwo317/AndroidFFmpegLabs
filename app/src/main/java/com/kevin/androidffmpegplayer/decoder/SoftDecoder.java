@@ -43,7 +43,7 @@ public class SoftDecoder implements Decoder {
          * 根据h265或者h264切换解码器
          */
 //        if (fFmpegDecoder != null) {
-//            fFmpegDecoder.stopDecoder();
+//            fFmpegDecoder.stop();
 //        }
 //        fF
         return false;
@@ -97,7 +97,7 @@ public class SoftDecoder implements Decoder {
 //            mAvailableOutputBufferIndices.clear();
 //            mAvailableOutputFrameInfos.clear();
 
-//            fFmpegDecoder.stopDecoder();
+//            fFmpegDecoder.stop();
             isStart = false;
         }
     }

@@ -176,6 +176,7 @@ void render_rend(AVFrame* dst_frame, int width, int height, ANativeWindow *windo
     }
 
 }
+
 int FFmpegDecoder::decode(AVCodecContext *ctx,
                   AVPacket *pkt,
                   AVFrame *frame) {
@@ -235,7 +236,16 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
     }
 }
 
-void FFmpegDecoder::startDecoder() {
+void FFmpegDecoder::configure(ANativeWindow *ptr, AVCodecID avCodecId) {
+    if(_window){
+        ANativeWindow_release(_window);
+        _window = nullptr;
+    }
+    _window = ptr;
+    _avCodecID = avCodecId;
+}
+
+void FFmpegDecoder::start() {
 
     int ret = 0;
 
@@ -287,15 +297,19 @@ void FFmpegDecoder::startDecoder() {
     return;
 
     end:
-    stopDecoder();
-//    av_packet_free(&pkt);
-//    av_frame_free(&frame);
-//    av_parser_close(parserCtx);
-//    avcodec_free_context(&ctx);
+    stop();
 }
 
 bool FFmpegDecoder::isStart() {
     return _isStart;
+}
+
+void FFmpegDecoder::stop() {
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_parser_close(parserCtx);
+    avcodec_free_context(&ctx);
+    _isStart = false;
 }
 
 /**
@@ -358,7 +372,7 @@ bool FFmpegDecoder::writePacket(char *data, int data_len) {
     return true;
 
     end:
-    stopDecoder();
+    stop();
     return false;
 }
 
@@ -366,19 +380,42 @@ void FFmpegDecoder::readFrame() {
 
 }
 
-void FFmpegDecoder::stopDecoder() {
-    av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_parser_close(parserCtx);
-    avcodec_free_context(&ctx);
-    _isStart = false;
+int FFmpegDecoder::dequeueInputBuffer() {
+    for (int i = 0; i < sizeof(_availableInputBufferQueue); ++i) {
+        if (!_availableInputBufferQueue[i]->isLock){
+            _availableInputBufferQueue[i]->isLock = true;
+            return i;
+        }
+    }
+    return -1;
 }
 
-void FFmpegDecoder::configure(ANativeWindow *ptr, AVCodecID avCodecId) {
-    if(_window){
-        ANativeWindow_release(_window);
-        _window = nullptr;
+void FFmpegDecoder::queueInputBuffer(int index, char *data, int data_len) {
+    std::shared_ptr<BufferData<std::vector<char>>> buffer = _availableInputBufferQueue[index];
+     auto ptr = buffer->ptr;
+    if (ptr->size() < data_len + AV_INPUT_BUFFER_PADDING_SIZE) {
+        ptr->resize(data_len + AV_INPUT_BUFFER_PADDING_SIZE);
     }
-    _window = ptr;
-    _avCodecID = avCodecId;
+    std::memcpy(ptr->data(), data, data_len);
+
+    //移动
+    _availableInputBufferQueue[index] = nullptr;
+    _queueInputBufferQueue.push_back(buffer);
+//    _queueInputBufferQueue.pop_front()
+    //decode thread poll
 }
+
+int FFmpegDecoder::dequeueOutputBuffer(BufferInfo bufferInfo) {
+
+    return 0;
+}
+
+void FFmpegDecoder::releaseOutputBuffer(int index) {
+
+}
+
+void FFmpegDecoder::reset() {
+
+}
+
+
