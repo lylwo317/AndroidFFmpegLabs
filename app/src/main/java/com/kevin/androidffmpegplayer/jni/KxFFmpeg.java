@@ -6,7 +6,15 @@
  * the SWIG interface file instead.
  * ----------------------------------------------------------------------------- */
 
-package com.kevin.androidffmpegplayer;
+package com.kevin.androidffmpegplayer.jni;
 
 public class KxFFmpeg {
+  public static SWIGTYPE_AVMediaType avcodec_get_type(AVCodecID codec_id) {
+    return SWIGTYPE_AVMediaType.swigToEnum(KxFFmpegJNI.avcodec_get_type(codec_id.swigValue()));
+  }
+
+  public static String avcodec_get_name(AVCodecID id) {
+    return KxFFmpegJNI.avcodec_get_name(id.swigValue());
+  }
+
 }

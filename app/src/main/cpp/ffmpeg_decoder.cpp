@@ -1,4 +1,4 @@
-#include <h264player.h>
+#include <ffmpeg_decoder.h>
 #include <jni.h>
 
 #include "Log.h"
@@ -231,6 +231,7 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
                   dst_frame->data, dst_frame->linesize);
         render_rend(dst_frame, dst_frame->width, dst_frame->height, _window);
         usleep(40 * 1000);
+        av_frame_free(&dst_frame);
     }
 }
 
@@ -240,7 +241,7 @@ void FFmpegDecoder::startDecoder() {
 
     // 获取解码器
     //    codec = avcodec_find_decoder_by_name("h264");
-    codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+    codec = avcodec_find_decoder(_avCodecID);
     if (!codec) {
         LOGE("decoder not found");
         return;
@@ -373,10 +374,11 @@ void FFmpegDecoder::stopDecoder() {
     _isStart = false;
 }
 
-void FFmpegDecoder::setANativeWindow(ANativeWindow* ptr) {
+void FFmpegDecoder::configure(ANativeWindow *ptr, AVCodecID avCodecId) {
     if(_window){
         ANativeWindow_release(_window);
-        _window = NULL;
+        _window = nullptr;
     }
     _window = ptr;
+    _avCodecID = avCodecId;
 }

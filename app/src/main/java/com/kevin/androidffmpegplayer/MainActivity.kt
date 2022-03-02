@@ -12,6 +12,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.kevin.androidffmpegplayer.frame.FrameEntity
 import com.kevin.androidffmpegplayer.frame.P2pFrameHeader
+import com.kevin.androidffmpegplayer.jni.AVCodecID
+import com.kevin.androidffmpegplayer.jni.FFmpegDecoder
 import java.io.File
 import java.nio.ByteBuffer
 
@@ -20,46 +22,44 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
+            Toast.makeText(this, "已获得访问所有文件的权限", Toast.LENGTH_SHORT).show()
+            val file = File("/sdcard/h264_aac.raw")
 
-        val file = File("/sdcard/h264_aac.raw")
+            if (file.exists()) {
+                val readBytes = file.readBytes()
+                val buffer = ByteBuffer.wrap(readBytes)
 
-        if (file.exists()) {
-            var readBytes = file.readBytes()
-            val buffer = ByteBuffer.wrap(readBytes)
+                val decoder = FFmpegDecoder()
+                val surfaceView = findViewById<SurfaceView>(R.id.surface_view)
+                surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+                    override fun surfaceCreated(p0: SurfaceHolder) {
+                        decoder.configureFromJava(p0.surface, AVCodecID.AV_CODEC_ID_H264)
+                        decoder.startDecoder()
 
-            val h264Player = FFmpegDecoder()
-            val surfaceView = findViewById<SurfaceView>(R.id.surface_view)
-            surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
-                override fun surfaceCreated(p0: SurfaceHolder) {
-                    h264Player.setWindow(p0.surface)
-                    h264Player.startDecoder()
-
-                    val thread = object : Thread() {
-                        override fun run() {
-                            startDecode(buffer, h264Player)
+                        val thread = object : Thread() {
+                            override fun run() {
+                                startDecode(buffer, decoder)
+                            }
                         }
+
+                        thread.start()
                     }
 
-                    thread.start()
-                }
+                    override fun surfaceChanged(p0: SurfaceHolder, p1: Int, p2: Int, p3: Int) {
+                    }
 
-                override fun surfaceChanged(p0: SurfaceHolder, p1: Int, p2: Int, p3: Int) {
-                }
-
-                override fun surfaceDestroyed(p0: SurfaceHolder) {
-                }
-            })
+                    override fun surfaceDestroyed(p0: SurfaceHolder) {
+                    }
+                })
 
 //            startDecode(buffer, h264Player)
 //            h264Player.setANativeWindow(10L);
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
-            Toast.makeText(this, "已获得访问所有文件的权限", Toast.LENGTH_SHORT).show()
+            }
         } else {
             val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
             startActivity(intent)
         }
-
     }
 
     fun startDecode(buffer: ByteBuffer, decoder: FFmpegDecoder){

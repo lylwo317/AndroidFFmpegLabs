@@ -6,7 +6,7 @@
  * the SWIG interface file instead.
  * ----------------------------------------------------------------------------- */
 
-package com.kevin.androidffmpegplayer;
+package com.kevin.androidffmpegplayer.jni;
 
 public class FFmpegDecoder {
   private transient long swigCPtr;
@@ -56,8 +56,8 @@ public class FFmpegDecoder {
     KxFFmpegJNI.FFmpegDecoder_stopDecoder(swigCPtr, this);
   }
 
-  public void setWindow(java.lang.Object surface) {
-    KxFFmpegJNI.FFmpegDecoder_setWindow(swigCPtr, this, surface);
+  public void configureFromJava(Object surface, AVCodecID codecId) {
+    KxFFmpegJNI.FFmpegDecoder_configureFromJava(swigCPtr, this, surface, codecId.swigValue());
   }
 
   public FFmpegDecoder() {

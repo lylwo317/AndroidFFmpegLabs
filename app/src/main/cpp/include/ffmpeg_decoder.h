@@ -19,6 +19,7 @@ private:
     bool _isStart = false;
     bool _getfirsti = false;
     bool _firstNeedI = true;
+
     ANativeWindow* _window = nullptr;
     // 解码器
     AVCodec *codec = nullptr;
@@ -30,6 +31,9 @@ private:
     AVPacket *pkt = nullptr;
     // 存放解码后的数据(yuv)
     AVFrame *frame = nullptr;
+
+    AVCodecID _avCodecID = AV_CODEC_ID_NONE;
+
     const char * get_h264_nalu(const char* data, int len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync);
     int decode(AVCodecContext *ctx, AVPacket *pkt, AVFrame *frame);
 public:
@@ -38,6 +42,9 @@ public:
      * 开启解码器
      */
     void startDecoder();
+
+    //Surface, FORMAT
+    void configure(ANativeWindow *ptr, AVCodecID avCodecId);
 
     /**
      * 检测解码器状态
@@ -62,8 +69,6 @@ public:
      * 停止解码器
      */
     void stopDecoder();
-
-    void setANativeWindow(ANativeWindow *ptr);
 };
 
 #endif
