@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.kevin.androidffmpegplayer.frame.FrameEntity
 import com.kevin.androidffmpegplayer.frame.P2pFrameHeader
 import com.kevin.androidffmpegplayer.jni.AVCodecID
+import com.kevin.androidffmpegplayer.jni.BufferInfo
 import com.kevin.androidffmpegplayer.jni.FFmpegDecoder
 import java.io.File
 import java.nio.ByteBuffer
@@ -35,7 +36,7 @@ class MainActivity : AppCompatActivity() {
                 surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
                     override fun surfaceCreated(p0: SurfaceHolder) {
                         decoder.configureFromJava(p0.surface, AVCodecID.AV_CODEC_ID_H264)
-                        decoder.startDecoder()
+                        decoder.start()
 
                         val thread = object : Thread() {
                             override fun run() {
@@ -75,10 +76,27 @@ class MainActivity : AppCompatActivity() {
                 frameEntity.frame = bodyBytes
             }
             if (frameEntity.isVideoFrame) {
-                decoder.writePacket(frameEntity.frame)
+//                decoder.writePacket(frameEntity.frame)
+                var writeInput = false
+
+                while (!writeInput) {
+                    var index = -1
+                    index = decoder.dequeueInputBuffer()
+                    if (index >= 0) {
+                        decoder.queueInputBuffer(index, frameEntity.frame)
+                        writeInput = true
+                    }
+
+                    val bufferInfo = BufferInfo()
+                    index = decoder.dequeueOutputBuffer(bufferInfo)
+                    if (index >= 0) {
+                        decoder.releaseOutputBuffer(index)
+                        Thread.sleep(40)
+                    }
+                }
             }
             Log.d("Read Packet", "frame header " + frameEntity.frameHeader)
         }
-        decoder.stopDecoder()
+        decoder.stop()
     }
 }

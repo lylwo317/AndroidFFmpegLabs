@@ -15,6 +15,7 @@
 #include "ffmpeg_decoder.h"
 #include <android/native_window_jni.h>
 #include <libavcodec/codec_id.h>
+#include "buffer_info.h"
 %}
 
 %ignore FFmpegDecoder::setANativeWindow;
@@ -32,4 +33,5 @@
 //%rename  KxFFmpeg;
 %include "libavcodec/codec_id.h"
 %include "ffmpeg_decoder.h"
+%include "buffer_info.h"
 %include <stdint.i>

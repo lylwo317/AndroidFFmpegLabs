@@ -36,8 +36,8 @@ public class FFmpegDecoder {
     }
   }
 
-  public void startDecoder() {
-    KxFFmpegJNI.FFmpegDecoder_startDecoder(swigCPtr, this);
+  public void start() {
+    KxFFmpegJNI.FFmpegDecoder_start(swigCPtr, this);
   }
 
   public boolean isStart() {
@@ -52,8 +52,28 @@ public class FFmpegDecoder {
     KxFFmpegJNI.FFmpegDecoder_readFrame(swigCPtr, this);
   }
 
-  public void stopDecoder() {
-    KxFFmpegJNI.FFmpegDecoder_stopDecoder(swigCPtr, this);
+  public void stop() {
+    KxFFmpegJNI.FFmpegDecoder_stop(swigCPtr, this);
+  }
+
+  public void reset() {
+    KxFFmpegJNI.FFmpegDecoder_reset(swigCPtr, this);
+  }
+
+  public int dequeueInputBuffer() {
+    return KxFFmpegJNI.FFmpegDecoder_dequeueInputBuffer(swigCPtr, this);
+  }
+
+  public void queueInputBuffer(int index, byte[] data) {
+    KxFFmpegJNI.FFmpegDecoder_queueInputBuffer(swigCPtr, this, index, data);
+  }
+
+  public int dequeueOutputBuffer(BufferInfo bufferInfo) {
+    return KxFFmpegJNI.FFmpegDecoder_dequeueOutputBuffer(swigCPtr, this, BufferInfo.getCPtr(bufferInfo), bufferInfo);
+  }
+
+  public void releaseOutputBuffer(int index) {
+    KxFFmpegJNI.FFmpegDecoder_releaseOutputBuffer(swigCPtr, this, index);
   }
 
   public void configureFromJava(Object surface, AVCodecID codecId) {

@@ -18,7 +18,7 @@ public class SoftDecoder implements Decoder {
     public void start() {
         if (!isStart) {
             reInitCodec();
-            fFmpegDecoder.startDecoder();
+//            fFmpegDecoder.start();
 
 //            MediaFormat currentMediaFormat = mExtractor.getCurrentMediaFormat();
 //            if (currentMediaFormat != null) {

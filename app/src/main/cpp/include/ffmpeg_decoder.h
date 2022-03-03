@@ -5,7 +5,9 @@
 #include <vector>
 #include <queue>
 #include <deque>
+#include <thread>
 #include "stream_data.h"
+#include "buffer_info.h"
 #include "block_queue.h"
 
 
@@ -25,6 +27,10 @@ private:
     bool _getfirsti = false;
     bool _firstNeedI = true;
 
+    std::thread _t;
+
+   volatile bool _stop_decode = false;
+
     ANativeWindow* _window = nullptr;
     // 解码器
     AVCodec *codec = nullptr;
@@ -42,14 +48,17 @@ private:
     //等待dequeue，然后写入数据
     std::shared_ptr<BufferData<std::vector<char>>> _availableInputBufferQueue[2] = {};
     //等待解码器解码
-    std::deque<std::shared_ptr<BufferData<std::vector<char>>>> _queueInputBufferQueue;
+    BlockingQueue<std::shared_ptr<BufferData<std::vector<char>>>> _queueInputBufferQueue;
 
     //等待解码器解码填充已经解码好的数据
-    std::queue<std::shared_ptr<BufferData<AVFrame>>> _availableOutputBufferQueue;
+    BlockingQueue<std::shared_ptr<BufferData<AVFrame>>> _availableOutputBufferQueue;
     //等待渲染
-    std::queue<std::shared_ptr<BufferData<AVFrame>>> _waitForRenderOutputBufferQueue;
+    std::vector<std::shared_ptr<BufferData<AVFrame>>> _waitForRenderOutputBufferQueue;
+//    std::shared_ptr<BufferData<AVFrame>> _waitForRenderOutputBufferQueue[2] = {};
 
-    const char * get_h264_nalu(const char* data, int len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync);
+    const char * get_h264_nalu(const char* data, size_t len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync);
+    void parseAndDecode();
+    void putToAvailableInputBufferQueue(std::shared_ptr<BufferData<std::vector<char>>> buffer);
     int decode(AVCodecContext *ctx, AVPacket *pkt, AVFrame *frame);
 public:
     //Surface, FORMAT
@@ -90,9 +99,10 @@ public:
 
     void queueInputBuffer(int index, char* data, int data_len);
 
-    int dequeueOutputBuffer(BufferInfo bufferInfo);
+    int dequeueOutputBuffer(BufferInfo* bufferInfo);
 
     void releaseOutputBuffer(int index);
+
 };
 
 #endif

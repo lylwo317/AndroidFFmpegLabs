@@ -10,12 +10,13 @@ extern "C"{
 #include <libswscale/swscale.h>
 }
 #include <cstdint>
+#include <thread>
 
 #define ERROR_BUF(ret) \
     char errbuf[1024]; \
     av_strerror(ret, errbuf, sizeof (errbuf));
 
-const char * FFmpegDecoder::get_h264_nalu(const char* data, int len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync)
+const char * FFmpegDecoder::get_h264_nalu(const char* data, size_t len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync)
 {
     bool issync = false;
     int data_len_src = len;
@@ -179,7 +180,7 @@ void render_rend(AVFrame* dst_frame, int width, int height, ANativeWindow *windo
 
 int FFmpegDecoder::decode(AVCodecContext *ctx,
                   AVPacket *pkt,
-                  AVFrame *frame) {
+                  AVFrame *src_frame) {
     // 发送压缩数据到解码器
     int ret = avcodec_send_packet(ctx, pkt);
     if (ret < 0) {
@@ -190,7 +191,7 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
 
     while (true) {
         // 获取解码后的数据
-        ret = avcodec_receive_frame(ctx, frame);
+        ret = avcodec_receive_frame(ctx, src_frame);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
             return 0;
         } else if (ret < 0) {
@@ -200,8 +201,45 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
         }
 
         LOGD("解码成功");
-        LOGD("frame->linesize[0] %d", frame->linesize[0]);
+        LOGD("frame->linesize[0] %d", src_frame->linesize[0]);
 
+        std::shared_ptr<BufferData<AVFrame>> availableFrame;
+        ret = _availableOutputBufferQueue.pop(availableFrame);
+        if (!ret) {
+            return -1;
+        }
+        //1. 准备一个容器来装转码后的数据
+//        AVFrame* src_frame = av_frame_alloc();
+        AVFrame* dst_frame = availableFrame->ptr.get();
+        //在解码上下文使用extradata解析出第一帧图像后，ctx的width和height,pix_format 写入了实际的视频宽高，像素格式
+        dst_frame->width = ctx->width;
+        dst_frame->height = ctx->height;
+        //2. 转码为ARGB，来给NativeWindow显示
+        dst_frame->format = AV_PIX_FMT_RGBA;
+        //3. 根据输入图像和输出图像的信息（宽、高、像素），初始化格式转换上下文
+        //应该重复使用该上下文，不要每一帧都初始化一次
+        struct SwsContext * swsCtx = sws_getContext(
+                src_frame->width, src_frame->height,(enum AVPixelFormat) src_frame->format,
+                src_frame->width, src_frame->height,(enum AVPixelFormat) dst_frame->format,
+                SWS_FAST_BILINEAR, NULL, NULL, NULL);
+        //4. 初始化之前准备的dst_frame的buffer
+        int buffer_size = av_image_get_buffer_size(
+                (enum AVPixelFormat) dst_frame->format,
+                src_frame->width,
+                src_frame->height, 1);
+        uint8_t * buffer = (uint8_t *) av_malloc(sizeof(uint8_t) * buffer_size );
+        //5. 绑定dst_frame和新申请的buffer
+        av_image_fill_arrays(dst_frame->data, dst_frame->linesize, buffer,
+                             (enum AVPixelFormat) dst_frame->format,
+                             dst_frame->width, dst_frame->height, 1);
+        //6. 转码
+        sws_scale(swsCtx , (const uint8_t *const *) src_frame->data,
+                  src_frame->linesize, 0, src_frame->height,
+                  dst_frame->data, dst_frame->linesize);
+
+        _waitForRenderOutputBufferQueue.push_back(availableFrame);
+
+/*
         AVFrame* src_frame = frame;
         //1. 准备一个容器来装转码后的数据
         AVFrame* dst_frame = av_frame_alloc();
@@ -233,6 +271,7 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
         render_rend(dst_frame, dst_frame->width, dst_frame->height, _window);
         usleep(40 * 1000);
         av_frame_free(&dst_frame);
+*/
     }
 }
 
@@ -248,6 +287,7 @@ void FFmpegDecoder::configure(ANativeWindow *ptr, AVCodecID avCodecId) {
 void FFmpegDecoder::start() {
 
     int ret = 0;
+
 
     // 获取解码器
     //    codec = avcodec_find_decoder_by_name("h264");
@@ -268,21 +308,24 @@ void FFmpegDecoder::start() {
     ctx = avcodec_alloc_context3(codec);
     if (!ctx) {
         LOGE("avcodec_alloc_context3 error");
-        goto end;
+        stop();
+        return;
     }
 
     // 创建AVPacket
     pkt = av_packet_alloc();
     if (!pkt) {
         LOGE("av_packet_alloc error");
-        goto end;
+        stop();
+        return;
     }
 
     // 创建AVFrame
     frame = av_frame_alloc();
     if (!frame) {
         LOGE("av_frame_alloc error");
-        goto end;
+        stop();
+        return;
     }
 
     // 打开解码器
@@ -290,14 +333,23 @@ void FFmpegDecoder::start() {
     if (ret < 0) {
 //        ERROR_BUF(ret);
         LOGE("avcodec_open2 error");
-        goto end;
+        stop();
+        return;
+    }
+    for (auto &&item : _availableInputBufferQueue){
+        if (item == nullptr) {
+            item = std::make_shared<BufferData<std::vector<char>>>();
+        }
+    }
+    for (int i = 0; i < 2; ++i) {
+        auto item = std::make_shared<BufferData<AVFrame>>();
+        item->index = i;
+        _availableOutputBufferQueue.push(item);
     }
 
+    //启动解码线程
+    _t = std::thread(&FFmpegDecoder::parseAndDecode, this);
     _isStart = true;
-    return;
-
-    end:
-    stop();
 }
 
 bool FFmpegDecoder::isStart() {
@@ -305,11 +357,17 @@ bool FFmpegDecoder::isStart() {
 }
 
 void FFmpegDecoder::stop() {
-    av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_parser_close(parserCtx);
-    avcodec_free_context(&ctx);
-    _isStart = false;
+    //停止解码线程
+    if (_isStart) {
+        _stop_decode = true;
+        _queueInputBufferQueue.requestShutdown();
+        _t.join();
+        av_packet_free(&pkt);
+        av_frame_free(&frame);
+        av_parser_close(parserCtx);
+        avcodec_free_context(&ctx);
+        _isStart = false;
+    }
 }
 
 /**
@@ -381,8 +439,8 @@ void FFmpegDecoder::readFrame() {
 }
 
 int FFmpegDecoder::dequeueInputBuffer() {
-    for (int i = 0; i < sizeof(_availableInputBufferQueue); ++i) {
-        if (!_availableInputBufferQueue[i]->isLock){
+    for (int i = 0; i < sizeof(_availableInputBufferQueue) / sizeof(_availableInputBufferQueue[0]); ++i) {
+        if (_availableInputBufferQueue[i] != nullptr && !_availableInputBufferQueue[i]->isLock){
             _availableInputBufferQueue[i]->isLock = true;
             return i;
         }
@@ -397,21 +455,113 @@ void FFmpegDecoder::queueInputBuffer(int index, char *data, int data_len) {
         ptr->resize(data_len + AV_INPUT_BUFFER_PADDING_SIZE);
     }
     std::memcpy(ptr->data(), data, data_len);
+    buffer->size = data_len;
 
     //移动
     _availableInputBufferQueue[index] = nullptr;
-    _queueInputBufferQueue.push_back(buffer);
-//    _queueInputBufferQueue.pop_front()
-    //decode thread poll
+    _queueInputBufferQueue.push(buffer);
+}
+void FFmpegDecoder::putToAvailableInputBufferQueue(std::shared_ptr<BufferData<std::vector<char>>> buffer){
+    for (auto & i : _availableInputBufferQueue) {
+        if (i == nullptr) {
+            buffer->isLock = false;
+            i = buffer;
+            return;
+        }
+    }
 }
 
-int FFmpegDecoder::dequeueOutputBuffer(BufferInfo bufferInfo) {
+void FFmpegDecoder::parseAndDecode() {
+    //1.从阻塞队列pop
+    //2.获取后解析然后解码
+    //3.将解码数据放到outputBuffer
+    while (!_stop_decode) {
+        int ret = 0;
+        std::shared_ptr<BufferData<std::vector<char>>> buffer;
+        ret = _queueInputBufferQueue.pop(buffer);
+        if (!ret) {
+            continue;
+        }
 
-    return 0;
+        size_t inLen = buffer->size;
+        char* inData = buffer->ptr->data();
+        parserCtx->flags |= PARSER_FLAG_COMPLETE_FRAMES;//说明是完整的帧，不需要扫描startCode
+        while (inLen > 0) {
+            // 经过解析器解析，切割数据。以便解码器解码
+            unsigned char vps_nalu[1024] = {0};
+            unsigned int vps_len = 0;
+            unsigned char sps_nalu[1024] = {0};
+            unsigned int sps_len = 0;
+            unsigned char pps_nalu[1024] = {0};
+            unsigned int pps_len = 0;
+            bool issync = false;
+            get_h264_nalu(inData, inLen, sps_nalu, &sps_len, pps_nalu, &pps_len, &issync);
+            if (!issync && _firstNeedI) {
+                //需要是I帧，这个不是I帧，就跳过不解码先
+                //buffer归还
+                break;
+            }
+            if (_firstNeedI) {
+                _firstNeedI = false;
+            }
+            if (sps_len != 0) {//矫正sps pps的位置
+                memcpy(inData, (uint8_t *) sps_nalu, (size_t) sps_len);
+                memcpy(inData + sps_len, (uint8_t *) pps_nalu, (size_t) pps_len);
+            }
+            ret = av_parser_parse2(parserCtx, ctx,
+                                   &pkt->data, &pkt->size,
+                                   (uint8_t *) inData, inLen,
+                                   AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
+
+            if (ret < 0) {
+                ERROR_BUF(ret);
+                LOGE("av_parser_parse2 error");
+                break;
+            }
+
+            // 跳过已经解析过的数据
+            inData += ret;
+            // 减去已经解析过的数据大小
+            inLen -= ret;
+
+//    qDebug() << inEnd << pkt->size << ret;
+
+            // 解码
+            if (pkt->size > 0 && decode(ctx, pkt, frame) < 0) {
+                break;
+            }
+        }
+        putToAvailableInputBufferQueue(buffer);
+    }
+}
+
+int FFmpegDecoder::dequeueOutputBuffer(BufferInfo* bufferInfo) {
+    for (auto &&item : _waitForRenderOutputBufferQueue){
+        if (!item->isLock) {
+            item->isLock = true;
+            return item->index;
+        }
+    }
+    return -1;
 }
 
 void FFmpegDecoder::releaseOutputBuffer(int index) {
 
+    AVFrame* dst_frame = nullptr;
+    std::shared_ptr<BufferData<AVFrame>> dst = nullptr;
+    for (int i = 0; i < _waitForRenderOutputBufferQueue.size(); ++i) {
+        auto item = _waitForRenderOutputBufferQueue[i];
+        if (item->index == index) {
+            dst = item;
+            dst_frame = item->ptr.get();
+            _waitForRenderOutputBufferQueue.erase(_waitForRenderOutputBufferQueue.begin() + i);
+            break;
+        }
+    }
+    render_rend(dst_frame, dst_frame->width, dst_frame->height, _window);
+
+    dst->isLock = false;
+    _availableOutputBufferQueue.push(dst);
 }
 
 void FFmpegDecoder::reset() {

@@ -6,16 +6,12 @@
 #define ANDROIDFFMPEGPLAYER_STREAM_DATA_H
 #include <cstdint>
 
-class BufferInfo{
-public:
-long presentationTimeUs;
-
-};
-
 template <class _Tp>
 class BufferData {
 public:
-    std::shared_ptr<_Tp> ptr;
+    int index = -1;
+    std::shared_ptr<_Tp> ptr = std::make_shared<_Tp>();
+    size_t size = 0;
     bool isLock = false;
 };
 

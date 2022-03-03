@@ -9,27 +9,46 @@
 #include <condition_variable>
 #include <deque>
 
-template <typename T>
-class block_queue
-{
-private:
-    std::mutex              d_mutex;
-    std::condition_variable d_condition;
-    std::deque<T>           d_queue;
+template <typename T> class BlockingQueue {
+    std::condition_variable _cvCanPop;
+    std::mutex _sync;
+    std::queue<T> _qu;
+    bool _bShutdown = false;
+
 public:
-    void push(T const& value) {
+    void push(const T& item)
+    {
         {
-            std::unique_lock<std::mutex> lock(this->d_mutex);
-            d_queue.push_front(value);
+            std::unique_lock<std::mutex> lock(_sync);
+            _qu.push(item);
         }
-        this->d_condition.notify_one();
+        _cvCanPop.notify_one();
     }
-    T pop() {
-        std::unique_lock<std::mutex> lock(this->d_mutex);
-        this->d_condition.wait(lock, [=]{ return !this->d_queue.empty(); });
-        T rc(std::move(this->d_queue.back()));
-        this->d_queue.pop_back();
-        return rc;
+
+    void requestShutdown() {
+        {
+            std::unique_lock<std::mutex> lock(_sync);
+            _bShutdown = true;
+        }
+        _cvCanPop.notify_all();
+    }
+
+    bool pop(T &item) {
+        std::unique_lock<std::mutex> lock(_sync);
+        for (;;) {
+            if (_qu.empty()) {
+                if (_bShutdown) {
+                    return false;
+                }
+            }
+            else {
+                break;
+            }
+            _cvCanPop.wait(lock);
+        }
+        item = std::move(_qu.front());
+        _qu.pop();
+        return true;
     }
 };
 
