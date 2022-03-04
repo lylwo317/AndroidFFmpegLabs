@@ -46,8 +46,6 @@ public class KxFFmpegJNI {
   public final static native String avcodec_get_name(int jarg1);
   public final static native void FFmpegDecoder_start(long jarg1, FFmpegDecoder jarg1_);
   public final static native boolean FFmpegDecoder_isStart(long jarg1, FFmpegDecoder jarg1_);
-  public final static native boolean FFmpegDecoder_writePacket(long jarg1, FFmpegDecoder jarg1_, byte[] jarg2);
-  public final static native void FFmpegDecoder_readFrame(long jarg1, FFmpegDecoder jarg1_);
   public final static native void FFmpegDecoder_stop(long jarg1, FFmpegDecoder jarg1_);
   public final static native void FFmpegDecoder_reset(long jarg1, FFmpegDecoder jarg1_);
   public final static native int FFmpegDecoder_dequeueInputBuffer(long jarg1, FFmpegDecoder jarg1_);

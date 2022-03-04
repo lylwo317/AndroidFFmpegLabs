@@ -23,44 +23,47 @@ extern "C"{
  */
 class FFmpegDecoder {
 private:
+    std::mutex _sync;
     bool _isStart = false;
     bool _getfirsti = false;
     bool _firstNeedI = true;
 
-    std::thread _t;
+    std::thread _decodeThread;
 
    volatile bool _stop_decode = false;
 
     ANativeWindow* _window = nullptr;
     // 解码器
-    AVCodec *codec = nullptr;
+    AVCodec *_codec = nullptr;
     // 上下文
-    AVCodecContext *ctx = nullptr;
+    AVCodecContext *_ctx = nullptr;
     // 解析器上下文
-    AVCodecParserContext *parserCtx = nullptr;
+    AVCodecParserContext *_parserCtx = nullptr;
     // 存放解码前的数据(h264)
-    AVPacket *pkt = nullptr;
+    AVPacket *_pkt = nullptr;
     // 存放解码后的数据(yuv)
-    AVFrame *frame = nullptr;
+    AVFrame *_frame = nullptr;
 
     AVCodecID _avCodecID = AV_CODEC_ID_NONE;
 
     //等待dequeue，然后写入数据
-    std::shared_ptr<BufferData<std::vector<char>>> _availableInputBufferQueue[2] = {};
+    std::vector<std::shared_ptr<InputBufferData>> _availableInputBufferQueue;
     //等待解码器解码
-    BlockingQueue<std::shared_ptr<BufferData<std::vector<char>>>> _queueInputBufferQueue;
+    BlockingQueue<std::shared_ptr<InputBufferData>> _queueInputBufferQueue;
 
     //等待解码器解码填充已经解码好的数据
-    BlockingQueue<std::shared_ptr<BufferData<AVFrame>>> _availableOutputBufferQueue;
+    BlockingQueue<std::shared_ptr<OutputBufferData>> _availableOutputBufferQueue;
     //等待渲染
-    std::vector<std::shared_ptr<BufferData<AVFrame>>> _waitForRenderOutputBufferQueue;
-//    std::shared_ptr<BufferData<AVFrame>> _waitForRenderOutputBufferQueue[2] = {};
+    std::vector<std::shared_ptr<OutputBufferData>> _waitForRenderOutputBufferQueue;
 
     const char * get_h264_nalu(const char* data, size_t len, unsigned char *sps, unsigned int *p_sps_len, unsigned char *pps,unsigned int *p_pps_len, bool *sync);
     void parseAndDecode();
-    void putToAvailableInputBufferQueue(std::shared_ptr<BufferData<std::vector<char>>> buffer);
+    void putToAvailableInputBufferQueue(const std::shared_ptr<InputBufferData>& buffer);
     int decode(AVCodecContext *ctx, AVPacket *pkt, AVFrame *frame);
+    bool initAvCodec();
+    void destroyAvCodec();
 public:
+    ~FFmpegDecoder();
     //Surface, FORMAT
     void configure(ANativeWindow *ptr, AVCodecID avCodecId);
 
@@ -76,23 +79,13 @@ public:
     bool isStart();
 
     /**
-     * 写入数据进行解码
-     * @param data
-     * @param data_len
-     * @return
-     */
-    bool writePacket(char* data, int data_len);
-
-    /**
-     * 读取解码后的帧
-     */
-    void readFrame();
-
-    /**
      * 停止解码器
      */
     void stop();
 
+    /**
+     * 需要重新配置
+     */
     void reset();
 
     int dequeueInputBuffer();

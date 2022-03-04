@@ -44,14 +44,6 @@ public class FFmpegDecoder {
     return KxFFmpegJNI.FFmpegDecoder_isStart(swigCPtr, this);
   }
 
-  public boolean writePacket(byte[] data) {
-    return KxFFmpegJNI.FFmpegDecoder_writePacket(swigCPtr, this, data);
-  }
-
-  public void readFrame() {
-    KxFFmpegJNI.FFmpegDecoder_readFrame(swigCPtr, this);
-  }
-
   public void stop() {
     KxFFmpegJNI.FFmpegDecoder_stop(swigCPtr, this);
   }

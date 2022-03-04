@@ -5,14 +5,26 @@
 #ifndef ANDROIDFFMPEGPLAYER_STREAM_DATA_H
 #define ANDROIDFFMPEGPLAYER_STREAM_DATA_H
 #include <cstdint>
+#include <vector>
+extern "C"{
+#include "libavcodec/avcodec.h"
+};
 
-template <class _Tp>
 class BufferData {
 public:
     int index = -1;
-    std::shared_ptr<_Tp> ptr = std::make_shared<_Tp>();
     size_t size = 0;
     bool isLock = false;
+};
+
+class InputBufferData : public BufferData {
+public:
+    std::vector<char> data;
+};
+
+class OutputBufferData : public BufferData {
+public:
+    std::shared_ptr<AVFrame> ptr = std::make_shared<AVFrame>();
 };
 
 #endif //ANDROIDFFMPEGPLAYER_STREAM_DATA_H
