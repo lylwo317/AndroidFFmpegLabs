@@ -147,3 +147,6 @@ set(SWIG_OUTFILE_DIR ${CMAKE_CURRENT_BINARY_DIR})
 # 生成libdecoder_jni.so
 SWIG_ADD_LIBRARY(decoder_jni TYPE MODULE LANGUAGE java SOURCES ${SWIG_I_FILE})
 swig_link_libraries(decoder_jni kxffmpeg)
+
+#add_custom_command(TARGET decoder_jni POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SWIG_OUTDIR} ${PROJECT_SOURCE_DIR}/../java/${JAVA_JNI_GEN_SUBDIR})

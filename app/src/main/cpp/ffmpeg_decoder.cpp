@@ -237,7 +237,10 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
                   src_frame->linesize, 0, src_frame->height,
                   dst_frame->data, dst_frame->linesize);
 
-        _waitForRenderOutputBufferQueue.push_back(availableFrame);
+        {
+            std::unique_lock<std::mutex> lock(_sync);
+            _waitForRenderOutputBufferQueue.push_back(availableFrame);
+        }
     }
 }
 
@@ -251,7 +254,6 @@ void FFmpegDecoder::configure(ANativeWindow *ptr, AVCodecID avCodecId) {
 }
 
 void FFmpegDecoder::start() {
-    std::unique_lock<std::mutex> lock(_sync);
 
     if (!_isStart) {
         bool ret = initAvCodec();
@@ -283,7 +285,6 @@ bool FFmpegDecoder::isStart() {
 }
 
 void FFmpegDecoder::stop() {
-    std::unique_lock<std::mutex> lock(_sync);
     //停止解码线程
     if (_isStart) {
         _stop_decode = true;
@@ -297,7 +298,6 @@ void FFmpegDecoder::stop() {
     }
 }
 int FFmpegDecoder::dequeueInputBuffer() {
-    std::unique_lock<std::mutex> lock(_sync);
     for (int i = 0; i< _availableInputBufferQueue.size(); ++i) {
         if (_availableInputBufferQueue[i] != nullptr
         && !_availableInputBufferQueue[i]->isLock){
@@ -309,7 +309,6 @@ int FFmpegDecoder::dequeueInputBuffer() {
 }
 
 void FFmpegDecoder::queueInputBuffer(int index, char *data, int data_len) {
-    std::unique_lock<std::mutex> lock(_sync);
     std::shared_ptr<InputBufferData> buffer = _availableInputBufferQueue[index];
     LOGD("index = %d",index);
     auto& ptr = buffer->data;//这里是拷贝了
@@ -399,6 +398,7 @@ void FFmpegDecoder::parseAndDecode() {
 }
 
 int FFmpegDecoder::dequeueOutputBuffer(BufferInfo* bufferInfo) {
+    std::unique_lock<std::mutex> lock(_sync);
     for (auto &&item : _waitForRenderOutputBufferQueue){
         if (!item->isLock) {
             item->isLock = true;
@@ -409,7 +409,7 @@ int FFmpegDecoder::dequeueOutputBuffer(BufferInfo* bufferInfo) {
 }
 
 void FFmpegDecoder::releaseOutputBuffer(int index) {
-
+    std::unique_lock<std::mutex> lock(_sync);
     AVFrame* dst_frame = nullptr;
     std::shared_ptr<OutputBufferData> dst = nullptr;
     for (int i = 0; i < _waitForRenderOutputBufferQueue.size(); ++i) {
