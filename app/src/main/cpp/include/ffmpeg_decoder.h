@@ -90,7 +90,7 @@ public:
 
     int dequeueInputBuffer();
 
-    void queueInputBuffer(int index, char* data, int data_len);
+    void queueInputBuffer(int index, char* data_from, int data_len, int64_t pts);
 
     int dequeueOutputBuffer(BufferInfo* bufferInfo);
 

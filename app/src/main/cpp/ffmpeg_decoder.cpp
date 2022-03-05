@@ -211,6 +211,9 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
         //1. 准备一个容器来装转码后的数据
 //        AVFrame* src_frame = av_frame_alloc();
         AVFrame* dst_frame = availableFrame->ptr.get();
+//        av_freep(dst_frame->data[0]);
+        av_freep(&dst_frame->data[0]);
+        dst_frame->pts = pkt->pts;
         //在解码上下文使用extradata解析出第一帧图像后，ctx的width和height,pix_format 写入了实际的视频宽高，像素格式
         dst_frame->width = ctx->width;
         dst_frame->height = ctx->height;
@@ -223,6 +226,12 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
                 src_frame->width, src_frame->height,(enum AVPixelFormat) dst_frame->format,
                 SWS_FAST_BILINEAR, NULL, NULL, NULL);
         //4. 初始化之前准备的dst_frame的buffer
+        av_image_alloc(dst_frame->data, dst_frame->linesize,
+                             dst_frame->width, dst_frame->height,
+                             (enum AVPixelFormat) dst_frame->format,
+                             1);
+
+/*
         int buffer_size = av_image_get_buffer_size(
                 (enum AVPixelFormat) dst_frame->format,
                 src_frame->width,
@@ -232,6 +241,8 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
         av_image_fill_arrays(dst_frame->data, dst_frame->linesize, buffer,
                              (enum AVPixelFormat) dst_frame->format,
                              dst_frame->width, dst_frame->height, 1);
+*/
+
         //6. 转码
         sws_scale(swsCtx , (const uint8_t *const *) src_frame->data,
                   src_frame->linesize, 0, src_frame->height,
@@ -241,6 +252,7 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
             std::unique_lock<std::mutex> lock(_sync);
             _waitForRenderOutputBufferQueue.push_back(availableFrame);
         }
+        sws_freeContext(swsCtx);
     }
 }
 
@@ -269,6 +281,8 @@ void FFmpegDecoder::start() {
 
         for (int i = 0; i < 1; ++i) {
             auto item = std::make_shared<OutputBufferData>();
+            if (item->ptr.get())
+                memset(item->ptr.get(), 0, sizeof(AVFrame));
             item->index = i;
             _availableOutputBufferQueue.push(item);
         }
@@ -289,6 +303,7 @@ void FFmpegDecoder::stop() {
     if (_isStart) {
         _stop_decode = true;
         _queueInputBufferQueue.requestShutdown();
+        _availableOutputBufferQueue.requestShutdown();
         _decodeThread.join();
         _decodeThread = std::thread();
         destroyAvCodec();
@@ -298,6 +313,7 @@ void FFmpegDecoder::stop() {
     }
 }
 int FFmpegDecoder::dequeueInputBuffer() {
+    std::unique_lock<std::mutex> lock(_sync);
     for (int i = 0; i< _availableInputBufferQueue.size(); ++i) {
         if (_availableInputBufferQueue[i] != nullptr
         && !_availableInputBufferQueue[i]->isLock){
@@ -308,7 +324,8 @@ int FFmpegDecoder::dequeueInputBuffer() {
     return -1;
 }
 
-void FFmpegDecoder::queueInputBuffer(int index, char *data, int data_len) {
+void FFmpegDecoder::queueInputBuffer(int index, char* data, int data_len, int64_t pts) {
+    std::unique_lock<std::mutex> lock(_sync);
     std::shared_ptr<InputBufferData> buffer = _availableInputBufferQueue[index];
     LOGD("index = %d",index);
     auto& ptr = buffer->data;//这里是拷贝了
@@ -321,6 +338,7 @@ void FFmpegDecoder::queueInputBuffer(int index, char *data, int data_len) {
     buffer->size = data_len;
     //移动
     LOGD("_availableInput");
+    buffer->pts = pts;
     _availableInputBufferQueue[index].reset();
     _queueInputBufferQueue.push(buffer);
 }
@@ -352,25 +370,30 @@ void FFmpegDecoder::parseAndDecode() {
         _parserCtx->flags |= PARSER_FLAG_COMPLETE_FRAMES;//说明是完整的帧，不需要扫描startCode
         while (inLen > 0) {
             // 经过解析器解析，切割数据。以便解码器解码
-            unsigned char vps_nalu[1024] = {0};
-            unsigned int vps_len = 0;
-            unsigned char sps_nalu[1024] = {0};
-            unsigned int sps_len = 0;
-            unsigned char pps_nalu[1024] = {0};
-            unsigned int pps_len = 0;
-            bool issync = false;
-            get_h264_nalu(inData, inLen, sps_nalu, &sps_len, pps_nalu, &pps_len, &issync);
-            if (!issync && _firstNeedI) {
-                //需要是I帧，这个不是I帧，就跳过不解码先
-                //buffer归还
-                break;
-            }
-            if (_firstNeedI) {
-                _firstNeedI = false;
-            }
-            if (sps_len != 0) {//矫正sps pps的位置
-                memcpy(inData, (uint8_t *) sps_nalu, (size_t) sps_len);
-                memcpy(inData + sps_len, (uint8_t *) pps_nalu, (size_t) pps_len);
+            if (_avCodecID == AV_CODEC_ID_H264) {
+                //矫正sps pps的位置
+                unsigned char vps_nalu[1024] = {0};
+                unsigned int vps_len = 0;
+                unsigned char sps_nalu[1024] = {0};
+                unsigned int sps_len = 0;
+                unsigned char pps_nalu[1024] = {0};
+                unsigned int pps_len = 0;
+                bool issync = false;
+                get_h264_nalu(inData, inLen, sps_nalu, &sps_len, pps_nalu, &pps_len, &issync);
+                if (!issync && _firstNeedI) {
+                    //需要是I帧，这个不是I帧，就跳过不解码先
+                    //buffer归还
+                    break;
+                }
+                if (_firstNeedI) {
+                    _firstNeedI = false;
+                }
+                if (sps_len != 0) {
+                    memcpy(inData, (uint8_t *) sps_nalu, (size_t) sps_len);
+                    memcpy(inData + sps_len, (uint8_t *) pps_nalu, (size_t) pps_len);
+                }
+            } else if (_avCodecID == AV_CODEC_ID_HEVC) {
+
             }
             ret = av_parser_parse2(_parserCtx, _ctx,
                                    &_pkt->data, &_pkt->size,
@@ -387,6 +410,7 @@ void FFmpegDecoder::parseAndDecode() {
             inData += ret;
             // 减去已经解析过的数据大小
             inLen -= ret;
+            _pkt->pts = buffer->pts;
 
             // 解码
             if (_pkt->size > 0 && decode(_ctx, _pkt, _frame) < 0) {
@@ -402,6 +426,7 @@ int FFmpegDecoder::dequeueOutputBuffer(BufferInfo* bufferInfo) {
     for (auto &&item : _waitForRenderOutputBufferQueue){
         if (!item->isLock) {
             item->isLock = true;
+            bufferInfo->presentationTimeUs = item->ptr->pts;
             return item->index;
         }
     }

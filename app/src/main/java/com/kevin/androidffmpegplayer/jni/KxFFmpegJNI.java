@@ -50,13 +50,13 @@ public class KxFFmpegJNI {
   public final static native void FFmpegDecoder_stop(long jarg1, FFmpegDecoder jarg1_);
   public final static native void FFmpegDecoder_reset(long jarg1, FFmpegDecoder jarg1_);
   public final static native int FFmpegDecoder_dequeueInputBuffer(long jarg1, FFmpegDecoder jarg1_);
-  public final static native void FFmpegDecoder_queueInputBuffer(long jarg1, FFmpegDecoder jarg1_, int jarg2, byte[] jarg3);
+  public final static native void FFmpegDecoder_queueInputBuffer(long jarg1, FFmpegDecoder jarg1_, int jarg2, java.nio.ByteBuffer jarg3, int jarg4, long jarg5);
   public final static native int FFmpegDecoder_dequeueOutputBuffer(long jarg1, FFmpegDecoder jarg1_, long jarg2, BufferInfo jarg2_);
   public final static native void FFmpegDecoder_releaseOutputBuffer(long jarg1, FFmpegDecoder jarg1_, int jarg2);
   public final static native void FFmpegDecoder_configureFromJava(long jarg1, FFmpegDecoder jarg1_, java.lang.Object jarg2, int jarg3);
   public final static native long new_FFmpegDecoder();
-  public final static native void BufferInfo_presentationTimeUs_set(long jarg1, BufferInfo jarg1_, int jarg2);
-  public final static native int BufferInfo_presentationTimeUs_get(long jarg1, BufferInfo jarg1_);
+  public final static native void BufferInfo_presentationTimeUs_set(long jarg1, BufferInfo jarg1_, long jarg2);
+  public final static native long BufferInfo_presentationTimeUs_get(long jarg1, BufferInfo jarg1_);
   public final static native long new_BufferInfo();
   public final static native void delete_BufferInfo(long jarg1);
 }

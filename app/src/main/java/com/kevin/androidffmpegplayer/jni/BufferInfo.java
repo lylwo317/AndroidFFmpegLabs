@@ -36,11 +36,11 @@ public class BufferInfo {
     }
   }
 
-  public void setPresentationTimeUs(int value) {
+  public void setPresentationTimeUs(long value) {
     KxFFmpegJNI.BufferInfo_presentationTimeUs_set(swigCPtr, this, value);
   }
 
-  public int getPresentationTimeUs() {
+  public long getPresentationTimeUs() {
     return KxFFmpegJNI.BufferInfo_presentationTimeUs_get(swigCPtr, this);
   }
 

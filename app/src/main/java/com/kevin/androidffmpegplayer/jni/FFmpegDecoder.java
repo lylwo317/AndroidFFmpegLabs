@@ -56,8 +56,8 @@ public class FFmpegDecoder {
     return KxFFmpegJNI.FFmpegDecoder_dequeueInputBuffer(swigCPtr, this);
   }
 
-  public void queueInputBuffer(int index, byte[] data) {
-    KxFFmpegJNI.FFmpegDecoder_queueInputBuffer(swigCPtr, this, index, data);
+  public void queueInputBuffer(int index, java.nio.ByteBuffer data_from, int data_len, long pts) {
+    KxFFmpegJNI.FFmpegDecoder_queueInputBuffer(swigCPtr, this, index, data_from, data_len, pts);
   }
 
   public int dequeueOutputBuffer(BufferInfo bufferInfo) {

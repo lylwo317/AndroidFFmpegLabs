@@ -109,13 +109,16 @@ class MainActivity : AppCompatActivity() {
                         var index = -1
                         index = decoder.dequeueInputBuffer()
                         if (index >= 0) {
-                            decoder.queueInputBuffer(index, frameEntity.frame)
+                            val wrap = ByteBuffer.allocateDirect(frameEntity.frame.size)
+                            wrap.put(frameEntity.frame)
+                            decoder.queueInputBuffer(index, wrap, wrap.limit(), frameEntity.frameHeader.presentationTimeMs)
                             writeInput = true
                         }
 
                         val bufferInfo = BufferInfo()
                         index = decoder.dequeueOutputBuffer(bufferInfo)
                         if (index >= 0) {
+                            Log.d("Read Packet", "buffer info: pts = " + bufferInfo.presentationTimeUs)
                             decoder.releaseOutputBuffer(index)
                             Thread.sleep(40)
                         }

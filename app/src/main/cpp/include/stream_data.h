@@ -14,6 +14,7 @@ class BufferData {
 public:
     int index = -1;
     size_t size = 0;
+    int64_t pts = 0;
     bool isLock = false;
 };
 
