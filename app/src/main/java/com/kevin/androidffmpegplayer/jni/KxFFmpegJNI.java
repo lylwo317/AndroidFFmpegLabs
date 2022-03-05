@@ -12,9 +12,9 @@ public class KxFFmpegJNI {
 
   static {
       try {
-          System.loadLibrary("kxffmpeg");
+          System.loadLibrary("decoder_jni");
       } catch (UnsatisfiedLinkError e) {
-          System.err.println("libkxffmpeg.so failed to load. \n" + e);
+          System.err.println("libdecoder_jni.so failed to load. \n" + e);
           System.exit(1);
       }
   }
@@ -44,6 +44,7 @@ public class KxFFmpegJNI {
   public final static native int AV_CODEC_ID_WRAPPED_AVFRAME_get();
   public final static native int avcodec_get_type(int jarg1);
   public final static native String avcodec_get_name(int jarg1);
+  public final static native void delete_FFmpegDecoder(long jarg1);
   public final static native void FFmpegDecoder_start(long jarg1, FFmpegDecoder jarg1_);
   public final static native boolean FFmpegDecoder_isStart(long jarg1, FFmpegDecoder jarg1_);
   public final static native void FFmpegDecoder_stop(long jarg1, FFmpegDecoder jarg1_);
@@ -52,9 +53,8 @@ public class KxFFmpegJNI {
   public final static native void FFmpegDecoder_queueInputBuffer(long jarg1, FFmpegDecoder jarg1_, int jarg2, byte[] jarg3);
   public final static native int FFmpegDecoder_dequeueOutputBuffer(long jarg1, FFmpegDecoder jarg1_, long jarg2, BufferInfo jarg2_);
   public final static native void FFmpegDecoder_releaseOutputBuffer(long jarg1, FFmpegDecoder jarg1_, int jarg2);
-  public final static native void FFmpegDecoder_configureFromJava(long jarg1, FFmpegDecoder jarg1_, Object jarg2, int jarg3);
+  public final static native void FFmpegDecoder_configureFromJava(long jarg1, FFmpegDecoder jarg1_, java.lang.Object jarg2, int jarg3);
   public final static native long new_FFmpegDecoder();
-  public final static native void delete_FFmpegDecoder(long jarg1);
   public final static native void BufferInfo_presentationTimeUs_set(long jarg1, BufferInfo jarg1_, int jarg2);
   public final static native int BufferInfo_presentationTimeUs_get(long jarg1, BufferInfo jarg1_);
   public final static native long new_BufferInfo();

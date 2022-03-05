@@ -3,9 +3,9 @@
 %pragma(java) jniclasscode=%{
   static {
       try {
-          System.loadLibrary("kxffmpeg");
+          System.loadLibrary("decoder_jni");
       } catch (UnsatisfiedLinkError e) {
-          System.err.println("libkxffmpeg.so failed to load. \n" + e);
+          System.err.println("libdecoder_jni.so failed to load. \n" + e);
           System.exit(1);
       }
   }

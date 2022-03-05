@@ -68,7 +68,7 @@ public class FFmpegDecoder {
     KxFFmpegJNI.FFmpegDecoder_releaseOutputBuffer(swigCPtr, this, index);
   }
 
-  public void configureFromJava(Object surface, AVCodecID codecId) {
+  public void configureFromJava(java.lang.Object surface, AVCodecID codecId) {
     KxFFmpegJNI.FFmpegDecoder_configureFromJava(swigCPtr, this, surface, codecId.swigValue());
   }
 
