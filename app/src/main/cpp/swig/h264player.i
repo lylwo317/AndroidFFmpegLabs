@@ -14,7 +14,7 @@
 %{
 #include "ffmpeg_decoder.h"
 #include <android/native_window_jni.h>
-#include <libavcodec/codec_id.h>
+#include <libavcodec/avcodec.h>
 #include "buffer_info.h"
 %}
 
@@ -45,6 +45,6 @@
 %typemap(javaout)   (char* data_from) {//Conversion from jtype to jstype
     return $jnicall;
 }
-%include "libavcodec/codec_id.h"
+%include "codec_id.h"
 %include "ffmpeg_decoder.h"
 %include "buffer_info.h"

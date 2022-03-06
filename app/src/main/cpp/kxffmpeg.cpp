@@ -17,7 +17,7 @@
 //    }
 extern "C"{
 #include "libavcodec/version.h"
-#include "libavcodec/codec.h"
+#include "libavcodec/avcodec.h"
 }
 #include <jni.h>
 #include <android/log.h>

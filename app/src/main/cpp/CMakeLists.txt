@@ -29,61 +29,12 @@ include_directories(${ffmpeg_head_dir})
 # You can define multiple libraries, and CMake builds them for you.
 # Gradle automatically packages shared libraries with your APK.
 # 添加ffmpeg相关的so库
-add_library(libavutil
+add_library(libijkffmpeg
 SHARED
 IMPORTED )
-set_target_properties(libavutil
+set_target_properties(libijkffmpeg
 PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libavutil.so )
-
-add_library(libswresample
-SHARED
-IMPORTED )
-set_target_properties(libswresample
-PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libswresample.so )
-
-add_library(libavresample
-        SHARED
-        IMPORTED )
-set_target_properties(libavresample
-        PROPERTIES IMPORTED_LOCATION
-        ${ffmpeg_lib_dir}/libavresample.so )
-
-add_library(libavcodec
-SHARED
-IMPORTED )
-set_target_properties(libavcodec
-PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libavcodec.so )
-
-add_library(libavfilter
-SHARED
-IMPORTED)
-set_target_properties(libavfilter
-PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libavfilter.so )
-
-add_library(libswscale
-SHARED
-IMPORTED)
-set_target_properties(libswscale
-PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libswscale.so )
-
-add_library(libavformat
-SHARED
-IMPORTED)
-set_target_properties(libavformat
-PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libavformat.so )
-
-add_library(libavdevice
-SHARED
-IMPORTED)
-set_target_properties(libavdevice
-PROPERTIES IMPORTED_LOCATION
-${ffmpeg_lib_dir}/libavdevice.so )
+${ffmpeg_lib_dir}/libijkffmpeg.so )
 
 add_library( # Sets the name of the library.
              kxffmpeg
@@ -116,14 +67,15 @@ target_link_libraries( # Specifies the target library.
                        kxffmpeg
 
                         #连接 FFmpeg 相关的库
-                        libavutil
-                        libswresample
-                        libavresample
-                        libavcodec
-                        libavfilter
-                        libswscale
-                        libavformat
-                        libavdevice
+                        libijkffmpeg
+#                        libavutil
+#                        libswresample
+#                        libavresample
+#                        libavcodec
+#                        libavfilter
+#                        libswscale
+#                        libavformat
+#                        libavdevice
                         -landroid
 
         # Links the target library to the log library
