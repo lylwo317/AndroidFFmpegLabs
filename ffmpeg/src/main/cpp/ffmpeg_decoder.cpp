@@ -151,6 +151,7 @@ void render_rend(AVFrame* dst_frame, int width, int height, ANativeWindow *windo
                    (size_t) src_stride);
         }
 
+        LOGD("render pts %lld", dst_frame->pts);
 /*
         //向 ANativeWindow_Buffer 填充 RGBA 像素格式的图像数据
         uint8_t *dst_data = static_cast<uint8_t *>(aNativeWindow_Buffer.bits);
@@ -206,13 +207,11 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
         std::shared_ptr<OutputBufferData> availableFrame;
         ret = _availableOutputBufferQueue.pop(availableFrame);
         if (!ret) {
+            LOGE("获取输出缓存失败");
             return -1;
         }
         //1. 准备一个容器来装转码后的数据
-//        AVFrame* src_frame = av_frame_alloc();
         AVFrame* dst_frame = availableFrame->ptr.get();
-//        av_freep(dst_frame->data[0]);
-        av_freep(&dst_frame->data[0]);
         dst_frame->pts = pkt->pts;
         //在解码上下文使用extradata解析出第一帧图像后，ctx的width和height,pix_format 写入了实际的视频宽高，像素格式
         dst_frame->width = ctx->width;
@@ -220,31 +219,30 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
         //2. 转码为ARGB，来给NativeWindow显示
         dst_frame->format = AV_PIX_FMT_RGBA;
         //3. 根据输入图像和输出图像的信息（宽、高、像素），初始化格式转换上下文
-        //应该重复使用该上下文，不要每一帧都初始化一次
-        struct SwsContext * swsCtx = sws_getContext(
-                src_frame->width, src_frame->height,(enum AVPixelFormat) src_frame->format,
-                src_frame->width, src_frame->height,(enum AVPixelFormat) dst_frame->format,
-                SWS_FAST_BILINEAR, NULL, NULL, NULL);
-        //4. 初始化之前准备的dst_frame的buffer
-        av_image_alloc(dst_frame->data, dst_frame->linesize,
-                             dst_frame->width, dst_frame->height,
-                             (enum AVPixelFormat) dst_frame->format,
-                             1);
-
-/*
-        int buffer_size = av_image_get_buffer_size(
-                (enum AVPixelFormat) dst_frame->format,
-                src_frame->width,
-                src_frame->height, 1);
-        uint8_t * buffer = (uint8_t *) av_malloc(sizeof(uint8_t) * buffer_size );
-        //5. 绑定dst_frame和新申请的buffer
-        av_image_fill_arrays(dst_frame->data, dst_frame->linesize, buffer,
-                             (enum AVPixelFormat) dst_frame->format,
-                             dst_frame->width, dst_frame->height, 1);
-*/
+        if (dst_frame->data[0] == nullptr || _swsCtx == nullptr || _lastHeight != src_frame->height || _lastWidth != src_frame->width) {
+            //应该重复使用该上下文，不要每一帧都初始化一次
+            if (_swsCtx) {
+                sws_freeContext(_swsCtx);
+                _swsCtx = nullptr;
+            }
+            _swsCtx = sws_getContext(
+                    src_frame->width, src_frame->height,(enum AVPixelFormat) src_frame->format,
+                    src_frame->width, src_frame->height,(enum AVPixelFormat) dst_frame->format,
+                    SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+            //4. 初始化之前准备的dst_frame的buffer
+            if (dst_frame->data[0]) {
+                av_freep(&dst_frame->data[0]);
+            }
+            av_image_alloc(dst_frame->data, dst_frame->linesize,
+                           dst_frame->width, dst_frame->height,
+                           (enum AVPixelFormat) dst_frame->format,
+                           1);
+            _lastWidth = src_frame->width;
+            _lastHeight = src_frame->height;
+        }
 
         //6. 转码
-        sws_scale(swsCtx , (const uint8_t *const *) src_frame->data,
+        sws_scale(_swsCtx , (const uint8_t *const *) src_frame->data,
                   src_frame->linesize, 0, src_frame->height,
                   dst_frame->data, dst_frame->linesize);
 
@@ -252,7 +250,6 @@ int FFmpegDecoder::decode(AVCodecContext *ctx,
             std::unique_lock<std::mutex> lock(_sync);
             _waitForRenderOutputBufferQueue.push_back(availableFrame);
         }
-        sws_freeContext(swsCtx);
     }
 }
 
@@ -273,24 +270,26 @@ void FFmpegDecoder::start() {
             return;
         }
 
-        for (int i = 0; i < 1; ++i) {
-            auto item = std::make_shared<InputBufferData>();
-            item->index = i;
-            _availableInputBufferQueue.push_back(item);
-        }
-
-        for (int i = 0; i < 1; ++i) {
-            auto item = std::make_shared<OutputBufferData>();
-            if (item->ptr.get())
-                memset(item->ptr.get(), 0, sizeof(AVFrame));
-            item->index = i;
-            _availableOutputBufferQueue.push(item);
-        }
+        initBufferQueue();
 
         _stop_decode = false;
         //启动解码线程
         _decodeThread = std::thread(&FFmpegDecoder::parseAndDecode, this);
         _isStart = true;
+    }
+}
+
+void FFmpegDecoder::initBufferQueue() {
+    for (int i = 0; i < 1; ++i) {
+        auto item = std::make_shared<InputBufferData>();
+        item->index = i;
+        _availableInputBufferQueue.push_back(item);
+    }
+
+    for (int i = 0; i < 1; ++i) {
+        auto item = std::make_shared<OutputBufferData>();
+        item->index = i;
+        _availableOutputBufferQueue.push(item);
     }
 }
 
@@ -308,7 +307,11 @@ void FFmpegDecoder::stop() {
         _decodeThread = std::thread();
         destroyAvCodec();
         _availableInputBufferQueue.clear();
+        _lastHeight = 0;
+        _lastWidth = 0;
+        _queueInputBufferQueue.clear();
         _availableOutputBufferQueue.clear();
+        _waitForRenderOutputBufferQueue.clear();
         _isStart = false;
     }
 }
@@ -340,6 +343,7 @@ void FFmpegDecoder::queueInputBuffer(int index, char* data, int data_len, int64_
     LOGD("_availableInput");
     buffer->pts = pts;
     _availableInputBufferQueue[index].reset();
+    LOGD("input pts %lld", buffer->pts);
     _queueInputBufferQueue.push(buffer);
 }
 void FFmpegDecoder::putToAvailableInputBufferQueue(const std::shared_ptr<InputBufferData>& buffer){
@@ -414,7 +418,10 @@ void FFmpegDecoder::parseAndDecode() {
 
             // 解码
             if (_pkt->size > 0 && decode(_ctx, _pkt, _frame) < 0) {
+                LOGD("decode pts failed %lld", _pkt->pts);
                 break;
+            } else {
+                LOGD("decode pts success %lld", _pkt->pts);
             }
         }
         putToAvailableInputBufferQueue(buffer);
@@ -464,6 +471,8 @@ void FFmpegDecoder::destroyAvCodec() {
     av_packet_free(&_pkt);
     avcodec_free_context(&_ctx);
     av_parser_close(_parserCtx);
+    sws_freeContext(_swsCtx);
+    _swsCtx = nullptr;
 }
 
 
@@ -518,6 +527,16 @@ bool FFmpegDecoder::initAvCodec() {
     return false;
 }
 
+/*
+void FFmpegDecoder::flush() {
+    _availableInputBufferQueue.clear();
+    _queueInputBufferQueue.clear();
+    _availableOutputBufferQueue.clear();
+    _waitForRenderOutputBufferQueue.clear();
+    initBufferQueue();
+}
+
+*/
 FFmpegDecoder::~FFmpegDecoder() {
     reset();
 }

@@ -25,7 +25,14 @@ public:
 
 class OutputBufferData : public BufferData {
 public:
-    std::shared_ptr<AVFrame> ptr = std::make_shared<AVFrame>();
+    std::shared_ptr<AVFrame> ptr = nullptr;
+    OutputBufferData(){
+        AVFrame* frame = av_frame_alloc();
+        ptr = std::shared_ptr<AVFrame>(frame, [](AVFrame* _ptr) {
+            av_freep(&_ptr->data[0]);
+            av_frame_free(&_ptr);
+        });
+    }
 };
 
 #endif //ANDROIDFFMPEGPLAYER_STREAM_DATA_H

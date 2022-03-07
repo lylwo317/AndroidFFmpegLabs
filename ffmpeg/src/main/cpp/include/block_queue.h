@@ -54,6 +54,7 @@ public:
     void clear(){
         std::unique_lock<std::mutex> lock(_sync);
         std::queue<T>().swap(_qu);
+        _bShutdown = false;
     }
 };
 

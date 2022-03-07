@@ -14,6 +14,7 @@
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavutil/frame.h>
+#include <libswscale/swscale.h>
 }
 
 /**
@@ -29,7 +30,11 @@ private:
 
     std::thread _decodeThread;
 
-   volatile bool _stop_decode = false;
+    volatile bool _stop_decode = false;
+    int _lastWidth = 0;
+    int _lastHeight = 0;
+
+    struct SwsContext * _swsCtx = nullptr;
 
     ANativeWindow* _window = nullptr;
     // 解码器
@@ -61,6 +66,7 @@ private:
     int decode(AVCodecContext *ctx, AVPacket *pkt, AVFrame *frame);
     bool initAvCodec();
     void destroyAvCodec();
+    void initBufferQueue();
 public:
     ~FFmpegDecoder();
     //Surface, FORMAT
@@ -82,6 +88,8 @@ public:
      */
     void stop();
 
+//    void flush();
+
     /**
      * 需要重新配置
      */
@@ -94,7 +102,6 @@ public:
     int dequeueOutputBuffer(BufferInfo* bufferInfo);
 
     void releaseOutputBuffer(int index);
-
 };
 
 #endif
