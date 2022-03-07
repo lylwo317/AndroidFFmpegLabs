@@ -12,8 +12,9 @@ project("kxffmpeg")
 
 set(SWIG_I_FILE "swig/h264player.i")
 
-set(JAVA_GEN_PACKAGE "com.kevin.androidffmpegplayer")
-set(JAVA_JNI_GEN_PACKAGE "com.kevin.androidffmpegplayer.jni")
+#set(JAVA_PACKAGE "com.kevin.ffmpeg")
+set(JAVA_GEN_PACKAGE "com.kevin.ffmpeg")
+set(JAVA_JNI_GEN_PACKAGE "com.kevin.ffmpeg.jni")
 string(REPLACE "." "/" JAVA_GEN_SUBDIR ${JAVA_GEN_PACKAGE})
 string(REPLACE "." "/" JAVA_JNI_GEN_SUBDIR ${JAVA_JNI_GEN_PACKAGE})
 

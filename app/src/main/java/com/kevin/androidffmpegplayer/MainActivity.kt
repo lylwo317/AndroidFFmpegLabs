@@ -1,22 +1,21 @@
 package com.kevin.androidffmpegplayer
 
-import android.content.Intent
-import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
-import android.provider.Settings
 import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.Button
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.kevin.androidffmpegplayer.frame.FrameEntity
 import com.kevin.androidffmpegplayer.frame.P2pFrameHeader
-import com.kevin.androidffmpegplayer.jni.AVCodecID
-import com.kevin.androidffmpegplayer.jni.BufferInfo
-import com.kevin.androidffmpegplayer.jni.FFmpegDecoder
+import com.kevin.ffmpeg.jni.AVCodecID
+import com.kevin.ffmpeg.jni.BufferInfo
+import com.kevin.ffmpeg.jni.FFmpegDecoder
 import java.io.File
 import java.nio.ByteBuffer
 
@@ -54,11 +53,15 @@ class MainActivity : AppCompatActivity() {
         stopBtn.setOnClickListener {
             stopPlay()
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
-            Toast.makeText(this, "已获得访问所有文件的权限", Toast.LENGTH_SHORT).show()
-        } else {
-            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-            startActivity(intent)
+        //1.先请求判断是否具有对应权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED
+        ) //根据返回的结果，判断对应的权限是否有。
+        {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                0
+            )
         }
     }
 

@@ -1,6 +1,6 @@
 package com.kevin.androidffmpegplayer.decoder;
 
-import com.kevin.androidffmpegplayer.jni.FFmpegDecoder;
+import com.kevin.ffmpeg.jni.FFmpegDecoder;
 
 /**
  * 实现软解，解码器

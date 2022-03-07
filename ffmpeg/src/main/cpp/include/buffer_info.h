@@ -8,7 +8,9 @@
 
 class BufferInfo{
 public:
-int64_t presentationTimeUs = 0;
+    int64_t presentationTimeUs = 0;
+    int32_t width = -1;
+    int32_t height = -1;
 
 };
 

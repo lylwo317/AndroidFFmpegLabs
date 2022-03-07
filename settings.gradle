@@ -12,5 +12,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "AndroidFFmpegPlayer"
+rootProject.name = "AndroidFFmpegLabs"
 include ':app'
+include ':ffmpeg'

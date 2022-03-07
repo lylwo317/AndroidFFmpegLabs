@@ -427,6 +427,8 @@ int FFmpegDecoder::dequeueOutputBuffer(BufferInfo* bufferInfo) {
         if (!item->isLock) {
             item->isLock = true;
             bufferInfo->presentationTimeUs = item->ptr->pts;
+            bufferInfo->width = item->ptr->width;
+            bufferInfo->height = item->ptr->height;
             return item->index;
         }
     }
