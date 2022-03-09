@@ -10,10 +10,10 @@ public class FrameEntity {
     public static final int MEDIA_CODEC_VIDEO_H265 = 80;
     public static final int MEDIA_CODEC_AUDIO_AAC = 136;
 
-    private P2pFrameHeader frameHeader;
+    private FrameHeader frameHeader;
     private byte[] frame;
 
-    public FrameEntity(P2pFrameHeader frameHeader, byte[] frame) {
+    public FrameEntity(FrameHeader frameHeader, byte[] frame) {
         this.frameHeader = frameHeader;
         this.frame = frame;
     }
@@ -22,11 +22,11 @@ public class FrameEntity {
 
     }
 
-    public P2pFrameHeader getFrameHeader() {
+    public FrameHeader getFrameHeader() {
         return frameHeader;
     }
 
-    public void setFrameHeader(P2pFrameHeader frameHeader) {
+    public void setFrameHeader(FrameHeader frameHeader) {
         this.frameHeader = frameHeader;
     }
 

@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.kevin.androidffmpegplayer.frame.FrameEntity
-import com.kevin.androidffmpegplayer.frame.P2pFrameHeader
+import com.kevin.androidffmpegplayer.frame.FrameHeader
 import com.kevin.ffmpeg.jni.AVCodecID
 import com.kevin.ffmpeg.jni.BufferInfo
 import com.kevin.ffmpeg.jni.FFmpegDecoder
@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun startPlay(){
+    private fun startPlay(){
         val file = File("/sdcard/h264_aac.raw")
 
         if (file.exists() && thread?.isAlive != true) {
@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun stopPlay() {
+    private fun stopPlay() {
         thread?.interrupt()
     }
 
@@ -95,9 +95,9 @@ class MainActivity : AppCompatActivity() {
         try {
             while (buffer.remaining() > 0 && !thread.isInterrupted) {
                 val frameEntity = FrameEntity()
-                val headerBytes = ByteArray(P2pFrameHeader.LENGTH)
+                val headerBytes = ByteArray(FrameHeader.LENGTH)
                 buffer.get(headerBytes)
-                val respondHeader: P2pFrameHeader = P2pFrameHeader.parseToP2pFrameHeader(headerBytes)
+                val respondHeader: FrameHeader = FrameHeader.parseToP2pFrameHeader(headerBytes)
                 frameEntity.frameHeader = respondHeader
                 if (respondHeader.len > 0) {//parse body
                     val bodyBytes = ByteArray(respondHeader.len)

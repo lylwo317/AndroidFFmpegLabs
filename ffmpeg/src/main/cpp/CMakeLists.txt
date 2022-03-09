@@ -45,6 +45,9 @@ add_library( # Sets the name of the library.
 
              # Provides a relative path to your source file(s).
         ffmpeg_decoder.cpp
+        H2645Parser/h265Parser.cpp
+        H2645Parser/H264Parser.cpp
+        H2645Parser/CH2645PacketParser.cpp
         )
 
 # Searches for a specified prebuilt library and stores the path as a

@@ -9,7 +9,7 @@ import java.nio.ByteOrder;
 /**
  * Created by XieJiaHua on 19-4-28
  */
-public class P2pFrameHeader {
+public class FrameHeader {
     short codec_id;      // 0，1 帧类型。136 aac, 80 h265, 78 h264
     byte flags;        // 2   0x01 I Frame, 0x00 other
     byte cam_index;      // 3
@@ -49,12 +49,12 @@ public class P2pFrameHeader {
         return getPresentationTimeMs() * 1000;
     }
 
-    public static P2pFrameHeader parseToP2pFrameHeader(byte[] header) {
-        P2pFrameHeader p2pFrameHeader = new P2pFrameHeader();
-        return parseToP2pFrameHeader(header, p2pFrameHeader);
+    public static FrameHeader parseToP2pFrameHeader(byte[] header) {
+        FrameHeader frameHeader = new FrameHeader();
+        return parseToP2pFrameHeader(header, frameHeader);
     }
 
-    public static P2pFrameHeader parseToP2pFrameHeader(byte[] header, P2pFrameHeader p2pFrameHeader) {
+    public static FrameHeader parseToP2pFrameHeader(byte[] header, FrameHeader frameHeader) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(header);
         try {
             ByteBuffer wrapped;
@@ -62,48 +62,48 @@ public class P2pFrameHeader {
             byte[] byteEach = new byte[2];
             byteArrayInputStream.read(byteEach);//codecid
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setCodec_id(wrapped.order(ByteOrder.LITTLE_ENDIAN).getShort());
+            frameHeader.setCodec_id(wrapped.order(ByteOrder.LITTLE_ENDIAN).getShort());
 
             byteEach = new byte[1];
             byteArrayInputStream.read(byteEach);//flags
-            p2pFrameHeader.setFlags(byteEach[0]);
+            frameHeader.setFlags(byteEach[0]);
 
             byteArrayInputStream.read(byteEach);//cam_index
-            p2pFrameHeader.setCam_index(byteEach[0]);
+            frameHeader.setCam_index(byteEach[0]);
 
             byteArrayInputStream.read(byteEach);//onlineNum
-            p2pFrameHeader.setOnlineNum(byteEach[0]);
+            frameHeader.setOnlineNum(byteEach[0]);
 
             byteArrayInputStream.read(byteEach);//iFrameIndex
-            p2pFrameHeader.setiFrameIndex(byteEach[0]);
+            frameHeader.setiFrameIndex(byteEach[0]);
 
             byteEach = new byte[2];
             byteArrayInputStream.read(byteEach);//backwardIndex
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setBackwardIndex(wrapped.order(ByteOrder.LITTLE_ENDIAN).getShort());
+            frameHeader.setBackwardIndex(wrapped.order(ByteOrder.LITTLE_ENDIAN).getShort());
 
 
             byteEach = new byte[4];
             byteArrayInputStream.read(byteEach);//unuse_int
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setUnuse_int(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
+            frameHeader.setUnuse_int(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
 
             byteArrayInputStream.read(byteEach);//timestamp
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setTimestamp(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
+            frameHeader.setTimestamp(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
 
             byteArrayInputStream.read(byteEach);//videowidth
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setVideowidth(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
+            frameHeader.setVideowidth(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
 
             byteArrayInputStream.read(byteEach);//videoheight
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setVideoheight(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
+            frameHeader.setVideoheight(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
 
             byteEach = new byte[2];
             byteArrayInputStream.read(byteEach);//frmNo
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setFrmNo(wrapped.order(ByteOrder.LITTLE_ENDIAN).getShort());
+            frameHeader.setFrmNo(wrapped.order(ByteOrder.LITTLE_ENDIAN).getShort());
 
 
             byteEach = new byte[2];
@@ -112,11 +112,11 @@ public class P2pFrameHeader {
             byteEach = new byte[4];
             byteArrayInputStream.read(byteEach);//len
             wrapped = ByteBuffer.wrap(byteEach);
-            p2pFrameHeader.setLen(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
+            frameHeader.setLen(wrapped.order(ByteOrder.LITTLE_ENDIAN).getInt());
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return p2pFrameHeader;
+        return frameHeader;
     }
 
 

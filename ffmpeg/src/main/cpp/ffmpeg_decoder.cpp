@@ -11,6 +11,7 @@ extern "C"{
 }
 #include <cstdint>
 #include <thread>
+#include "H2645Parser/H2645ParserPublic.hpp"
 
 #define ERROR_BUF(ret) \
     char errbuf[1024]; \
@@ -152,26 +153,6 @@ void render_rend(AVFrame* dst_frame, int width, int height, ANativeWindow *windo
         }
 
         LOGD("render pts %lld", dst_frame->pts);
-/*
-        //向 ANativeWindow_Buffer 填充 RGBA 像素格式的图像数据
-        uint8_t *dst_data = static_cast<uint8_t *>(aNativeWindow_Buffer.bits);
-
-        //参数中的 uint8_t *data 数据中 , 每一行有 linesize 个 , 拷贝的目标也要逐行拷贝
-        //  aNativeWindow_Buffer.stride 是每行的数据个数 , 每个数据都包含一套 RGBA 像素数据 ,
-        //      RGBA 数据每个占1字节 , 一个 RGBA 占 4 字节
-        //  每行的数据个数 * 4 代表 RGBA 数据个数
-        int dst_linesize = aNativeWindow_Buffer.stride * 4;
-
-        //获取 ANativeWindow_Buffer 中数据的地址
-        //      一次拷贝一行 , 有 像素高度 行数
-        for(int i = 0; i < aNativeWindow_Buffer.height; i++){
-            //计算拷贝的指针地址
-            //  每次拷贝的目的地址 : dst_data + ( i * dst_linesize )
-            //  每次拷贝的源地址 : data + ( i * linesize )
-            memcpy(dst_data + ( i * dst_linesize ), data + ( i * linesize ), dst_linesize);
-        }
-*/
-
         ANativeWindow_unlockAndPost(window);
     } else {
         LOGD("failed to lock window");
@@ -383,6 +364,9 @@ void FFmpegDecoder::parseAndDecode() {
                 unsigned char pps_nalu[1024] = {0};
                 unsigned int pps_len = 0;
                 bool issync = false;
+#if DEBUG
+                ParseH2645(H264, inData, inLen);
+#endif
                 get_h264_nalu(inData, inLen, sps_nalu, &sps_len, pps_nalu, &pps_len, &issync);
                 if (!issync && _firstNeedI) {
                     //需要是I帧，这个不是I帧，就跳过不解码先
@@ -397,7 +381,9 @@ void FFmpegDecoder::parseAndDecode() {
                     memcpy(inData + sps_len, (uint8_t *) pps_nalu, (size_t) pps_len);
                 }
             } else if (_avCodecID == AV_CODEC_ID_HEVC) {
-
+#if DEBUG
+                ParseH2645(H265, inData, inLen);
+#endif
             }
             ret = av_parser_parse2(_parserCtx, _ctx,
                                    &_pkt->data, &_pkt->size,
